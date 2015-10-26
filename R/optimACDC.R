@@ -1,10 +1,10 @@
 #' Optimization of sample configurations for spatial trend identification
-#' and estimation
+#' and estimation (III)
 #'
 #' Optimize a sample configuration for spatial trend identification and 
 #' estimation. An utility function \emph{U} is defined so that the sample 
 #' reproduces the bivariate association/correlation between the covariates, as 
-#' well as their marginal distribution.  (\bold{ACDC}). The utility function is 
+#' well as their marginal distribution (\bold{ACDC}). The utility function is 
 #' obtained aggregating two single objective functions: \bold{CORR} and 
 #' \bold{DIST}.
 #'
@@ -42,9 +42,9 @@
 #' set.seed(2001)
 #' res <- optimACDC(points = 100, candi = candi, covars = covars, 
 #'                  nadir = nadir, use.coords = TRUE, utopia = utopia)
-#' objSPSANN(res) # 0.5272031
-#' objACDC(points = res, candi = candi, covars = covars, use.coords = TRUE, 
-#'         nadir = nadir, utopia = utopia)
+#' objSPSANN(res) - # 0.5272031
+#'   objACDC(points = res, candi = candi, covars = covars, use.coords = TRUE, 
+#'           nadir = nadir, utopia = utopia)
 #' # MARGINAL DISTRIBUTION
 #' par(mfrow = c(3, 3))
 #' # Covariates
@@ -146,6 +146,18 @@ optimACDC <-
                              nadir = nadir, weights = weights, pcm = pcm, 
                              n.pts = n_pts, n.cov = n_cov, utopia = utopia,
                              covars.type = covars.type)
+      
+      # Avoid the following error:
+      # Error in if (new_energy[1] <= old_energy[1]) { : 
+      #   missing value where TRUE/FALSE needed
+      # Source: http://stackoverflow.com/a/7355280/3365410
+      # ASR: The reason for the error is unknown to me.
+      if (is.na(new_energy)) {
+        new_energy <- old_energy
+        new_conf <- old_conf
+        new_sm <- old_sm
+        new_scm <- old_scm
+      }
       
       # Evaluate the new system configuration
       if (greedy) {
