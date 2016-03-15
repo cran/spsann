@@ -1,95 +1,85 @@
-#' Optimization of sample configurations for spatial trend identification
-#' and estimation (III)
+#' Optimization of sample configurations for spatial trend identification and estimation (III)
 #'
-#' Optimize a sample configuration for spatial trend identification and 
-#' estimation. An utility function \emph{U} is defined so that the sample 
-#' reproduces the bivariate association/correlation between the covariates, as 
-#' well as their marginal distribution (\bold{ACDC}). The utility function is 
-#' obtained aggregating two single objective functions: \bold{CORR} and 
-#' \bold{DIST}.
+#' Optimize a sample configuration for spatial trend identification and estimation. An utility function 
+#' \emph{U} is defined so that the sample reproduces the bivariate association/correlation between the 
+#' covariates, as well as their marginal distribution (\bold{ACDC}). The utility function is obtained 
+#' aggregating two objective functions: \bold{CORR} and \bold{DIST}.
 #'
-#' @template spJitter_doc
+#' @inheritParams spJitter
 #' @template spSANN_doc
 #' @template ACDC_doc
 #' @template MOOP_doc
-#' @template CORR_doc
-#' @template DIST_doc
+#' @template spJitter_doc
+#' 
+#' @details 
+#' Visit the help pages of \code{\link[spsann]{optimCORR}} and \code{\link[spsann]{optimDIST}} to see the 
+#' details of the objective functions that compose \bold{ACDC}.
 #' 
 #' @return
-#' \code{optimACDC} returns a matrix: the optimized sample configuration.
+#' \code{optimACDC} returns an object of class \code{OptimizedSampleConfiguration}: the optimized sample
+#' configuration with details about the optimization.
 #' 
-#' \code{objACDC} returns a numeric value: the energy state of the sample
-#' configuration - the objective function value.
+#' \code{objACDC} returns a numeric value: the energy state of the sample configuration -- the objective
+#' function value.
 #' 
 #' @note
-#' This function was derived with modifications from the method known as the 
-#' \emph{conditioned Latin Hypercube sampling} originally proposed by Minasny 
-#' and McBratney (2006), and implemented in the R-package 
+#' This function was derived with modifications from the method known as the \emph{conditioned Latin Hypercube 
+#' sampling} originally proposed by Minasny and McBratney (2006), and implemented in the R-package 
 #' \pkg{\link[clhs]{clhs}} by Pierre Roudier.
+#' 
+#' @references
+#' Minasny, B.; McBratney, A. B. A conditioned Latin hypercube method for sampling in the presence of 
+#' ancillary information. \emph{Computers & Geosciences}, v. 32, p. 1378-1388, 2006.
 #'
+#' Minasny, B.; McBratney, A. B. Conditioned Latin Hypercube Sampling for calibrating soil sensor data to soil
+#' properties. Chapter 9. Viscarra Rossel, R. A.; McBratney, A. B.; Minasny, B. (Eds.) \emph{Proximal Soil
+#' Sensing}. Amsterdam: Springer, p. 111-119, 2010.
+#'
+#' Roudier, P.; Beaudette, D.; Hewitt, A. A conditioned Latin hypercube sampling algorithm incorporating
+#' operational constraints. \emph{5th Global Workshop on Digital Soil Mapping}. Sydney, p. 227-231, 2012.
+#' 
 #' @author Alessandro Samuel-Rosa \email{alessandrosamuelrosa@@gmail.com}
 #' @seealso \code{\link[clhs]{clhs}}, \code{\link[pedometrics]{cramer}}
+#' @aliases optimACDC objACDC ACDC
 #' @export
 #' @examples
-#' \dontrun{
-#' # This example takes more than 5 seconds to run!
-#' require(sp)
-#' data(meuse.grid)
-#' candi <- meuse.grid[, 1:2]
+#' data(meuse.grid, package = "sp")
+#' candi <- meuse.grid[1:1000, 1:2]
 #' nadir <- list(sim = 10, seeds = 1:10)
 #' utopia <- list(user = list(DIST = 0, CORR = 0))
-#' covars <- meuse.grid[, 5]
+#' covars <- meuse.grid[1:1000, 5]
+#' schedule <- scheduleSPSANN(
+#'   chains = 1, initial.temperature = 5, x.max = 1540, y.max = 2060, 
+#'   x.min = 0, y.min = 0, cellsize = 40)
 #' set.seed(2001)
-#' res <- optimACDC(points = 100, candi = candi, covars = covars, 
-#'                  nadir = nadir, use.coords = TRUE, utopia = utopia)
-#' objSPSANN(res) - # 0.5272031
-#'   objACDC(points = res, candi = candi, covars = covars, use.coords = TRUE, 
-#'           nadir = nadir, utopia = utopia)
-#' # MARGINAL DISTRIBUTION
-#' par(mfrow = c(3, 3))
-#' # Covariates
-#' i <- sample(1:nrow(candi), 100)
-#' hist(candi[, 1], breaks = 10)
-#' hist(candi[, 2], breaks = 10)
-#' hist(covars, breaks = 10)
-#' # Optimized sample
-#' hist(candi[res[, 1], 1], breaks = 10)
-#' hist(candi[res[, 1], 2], breaks = 10)
-#' hist(covars[res[, 1]], breaks = 10)
-#' # Random sample
-#' hist(candi[i, 1], breaks = 10)
-#' hist(candi[i, 2], breaks = 10)
-#' hist(covars[i], breaks = 10)
-#' 
-#' # LINEAR CORRELATION
-#' # Covariates
-#' cor(cbind(candi[, 1], candi[, 2], covars))
-#' # Optimized sample
-#' cor(cbind(candi[res[, 1], 1], candi[res[, 1], 2], covars[res[, 1]]))
-#' # Random sample
-#' cor(cbind(candi[i, 1], candi[i, 2], covars[i]))
-#' }
+#' res <- optimACDC(
+#'   points = 10, candi = candi, covars = covars, nadir = nadir,
+#'   use.coords = TRUE, utopia = utopia, schedule = schedule)
+#' objSPSANN(res) - objACDC(
+#'   points = res, candi = candi, covars = covars, 
+#'   use.coords = TRUE, nadir = nadir, utopia = utopia)
 # MAIN FUNCTION ################################################################
 optimACDC <-
-  function (points, candi, iterations = 100, 
-    # DIST and CORR
-    covars, strata.type = "area", use.coords = FALSE, 
-    # SPSANN
-    x.max, x.min, y.max, y.min,
-    acceptance = list(initial = 0.99, cooling = iterations / 10),
-    stopping = list(max.count = iterations / 10), plotit = FALSE, track = FALSE,
-    boundary, progress = TRUE, verbose = FALSE, greedy = FALSE,
-    # MOOP
-    weights = list(CORR = 0.5, DIST = 0.5),
-    nadir = list(sim = NULL, seeds = NULL, user = NULL, abs = NULL),
-    utopia = list(user = NULL, abs = NULL)) {
+  function (points, candi, 
+            # DIST and CORR
+            covars, strata.type = "area", use.coords = FALSE, 
+            # SPSANN
+            schedule = scheduleSPSANN(), plotit = FALSE, track = FALSE,
+            boundary, progress = "txt", verbose = FALSE,
+            # MOOP
+            weights = list(CORR = 0.5, DIST = 0.5),
+            nadir = list(sim = NULL, seeds = NULL, user = NULL, abs = NULL),
+            utopia = list(user = NULL, abs = NULL)) {
+    
+    # Objective function name
+    objective <- "ACDC"
     
     # Check spsann arguments
     eval(.check_spsann_arguments())
     
     # Check other arguments
-    check <- .optimACDCcheck(candi = candi, covars = covars, 
-                             use.coords = use.coords, strata.type = strata.type)
+    check <- .optimACDCcheck(
+      candi = candi, covars = covars, use.coords = use.coords, strata.type = strata.type)
     if (!is.null(check)) stop (check, call. = FALSE)
     
     # Set plotting options
@@ -107,133 +97,135 @@ optimACDC <-
     # Base data and initial energy state
     pcm <- .corCORR(obj = covars, covars.type = covars.type)
     scm <- .corCORR(obj = sm, covars.type = covars.type)
-    pop_prop <- .strataACDC(n.pts = n_pts, strata.type = strata.type, 
-                            covars = covars, covars.type = covars.type)
-    nadir <- .nadirACDC(n.pts = n_pts, n.cov = n_cov, n.candi = n_candi, 
-                        pcm = pcm, nadir = nadir, covars.type = covars.type,
-                        covars = covars, pop.prop = pop_prop, candi = candi)
+    pop_prop <- .strataACDC(
+      n.pts = n_pts, strata.type = strata.type, covars = covars, covars.type = covars.type)
+    nadir <- .nadirACDC(
+      n.pts = n_pts, n.cov = n_cov, n.candi = n_candi, pcm = pcm, nadir = nadir, covars.type = covars.type,
+      covars = covars, pop.prop = pop_prop, candi = candi)
     utopia <- .utopiaACDC(utopia = utopia)
-    energy0 <- .objACDC(sm = sm, n.cov = n_cov, pop.prop = pop_prop, pcm = pcm, 
-                        scm = scm, nadir = nadir, weights = weights, 
-                        n.pts = n_pts, utopia = utopia, 
-                        covars.type = covars.type)
-
+    energy0 <- .objACDC(
+      sm = sm, n.cov = n_cov, pop.prop = pop_prop, pcm = pcm, scm = scm, nadir = nadir, weights = weights, 
+      n.pts = n_pts, utopia = utopia, covars.type = covars.type)
+    
     # Other settings for the simulated annealing algorithm
-    old_scm <- scm
-    new_scm <- scm
-    best_scm <- scm
     old_sm <- sm
     new_sm <- sm
     best_sm <- sm
-    count <- 0
+    old_scm <- scm
+    new_scm <- scm
+    best_scm <- scm
     old_energy <- energy0
     best_energy <- data.frame(obj = Inf, CORR = Inf, DIST = Inf)
-    if (progress) {
-      pb <- utils::txtProgressBar(min = 1, max = iterations, style = 3) 
-    }
-    time0 <- proc.time()
-
-    # Begin the main loop
-    for (k in 1:iterations) {
+    actual_temp <- schedule$initial.temperature
+    k <- 0 # count the number of jitters
+    
+    # Set progress bar
+    eval(.set_progress())
+    
+    # Initiate the annealing schedule
+    for (i in 1:schedule$chains) {
+      n_accept <- 0
       
-      # Plotting and jittering
-      eval(.plot_and_jitter())
-      
-      # Update sample and correlation matrices, and energy state
-      new_sm[wp, ] <- covars[new_conf[wp, 1], ]
-      new_scm <- .corCORR(obj = new_sm, covars.type = covars.type)
-      new_energy <- .objACDC(sm = new_sm, pop.prop = pop_prop, scm = new_scm,
-                             nadir = nadir, weights = weights, pcm = pcm, 
-                             n.pts = n_pts, n.cov = n_cov, utopia = utopia,
-                             covars.type = covars.type)
-      
-      # Avoid the following error:
-      # Error in if (new_energy[1] <= old_energy[1]) { : 
-      #   missing value where TRUE/FALSE needed
-      # Source: http://stackoverflow.com/a/7355280/3365410
-      # ASR: The reason for the error is unknown to me.
-      if (is.na(new_energy)) {
-        new_energy <- old_energy
-        new_conf <- old_conf
-        new_sm <- old_sm
-        new_scm <- old_scm
-      }
-      
-      # Evaluate the new system configuration
-      if (greedy) {
-        random_prob <- 1
-      } else {
-        random_prob <- stats::runif(1)
-      }
-      actual_prob <- acceptance[[1]] * exp(-k / acceptance[[2]])
-      if (track) accept_probs[k] <- actual_prob
-      if (new_energy[1] <= old_energy[1]) {
-        old_conf <- new_conf
-        old_energy <- new_energy
-        count <- 0
-        old_sm <- new_sm
-        old_scm <- new_scm
-      } else {
-        if (new_energy[1] > old_energy[1] & random_prob <= actual_prob) {
-          old_conf <- new_conf
-          old_energy <- new_energy
-          count <- count + 1
-          old_sm <- new_sm
-          old_scm <- new_scm
-          if (verbose) {
-            cat("\n", count, "iteration(s) with no improvement... p = ",
-                random_prob, "\n")
+      for (j in 1:schedule$chain.length) { # Initiate one chain
+        
+        for (wp in 1:n_pts) { # Initiate loop through points
+          k <- k + 1
+          
+          # Plotting and jittering
+          eval(.plot_and_jitter())
+          
+          # Update sample and correlation matrices, and energy state
+          new_sm[wp, ] <- covars[new_conf[wp, 1], ]
+          new_scm <- .corCORR(obj = new_sm, covars.type = covars.type)
+          new_energy <- .objACDC(
+            sm = new_sm, pop.prop = pop_prop, scm = new_scm, nadir = nadir, weights = weights, pcm = pcm, 
+            n.pts = n_pts, n.cov = n_cov, utopia = utopia, covars.type = covars.type)
+          
+          # Avoid the following error:
+          # Error in if (new_energy[1] <= old_energy[1]) { : 
+          #   missing value where TRUE/FALSE needed
+          # Source: http://stackoverflow.com/a/7355280/3365410
+          # ASR: The reason for the error is unknown to me.
+          if (is.na(new_energy[1])) {
+            new_energy <- old_energy
+            new_conf <- old_conf
+            new_sm <- old_sm
+            new_scm <- old_scm
           }
-        } else {
-          new_energy <- old_energy
-          new_conf <- old_conf
-          count <- count + 1
-          new_sm <- old_sm
-          new_scm <- old_scm
-          if (verbose) {
-            cat("\n", count, "iteration(s) with no improvement... stops at",
-                stopping[[1]], "\n")
+          
+          # Evaluate the new system configuration
+          accept <- .acceptSPSANN(old_energy[[1]], new_energy[[1]], actual_temp)
+          if (accept) {
+            old_conf <- new_conf
+            old_energy <- new_energy
+            old_sm <- new_sm
+            old_scm <- new_scm
+            n_accept <- n_accept + 1
+          } else {
+            new_energy <- old_energy
+            new_conf <- old_conf
+            new_sm <- old_sm
+            new_scm <- old_scm
           }
+          if (track) energies[k, ] <- new_energy
+          
+          # Record best energy state
+          if (new_energy[[1]] < best_energy[[1]] / 1.0000001) {
+            best_k <- k
+            best_conf <- new_conf
+            best_energy <- new_energy
+            best_old_energy <- old_energy
+            old_conf <- old_conf
+            best_sm <- new_sm
+            best_old_sm <- old_sm
+            best_scm <- new_scm
+            best_old_scm <- old_scm
+          }
+          
+          # Update progress bar
+          eval(.update_progress())
+          
+        } # End loop through points
+        
+      } # End the chain
+      
+      # Check the proportion of accepted jitters in the first chain
+      eval(.check_first_chain())
+      
+      # Count the number of chains without any change in the objective function.
+      # Restart with the previously best configuration if it exists.
+      if (n_accept == 0) {
+        no_change <- no_change + 1
+        if (no_change > schedule$stopping) {
+          # if (new_energy[[1]] > best_energy[[1]] * 1.000001) {
+            # old_conf <- old_conf
+            # new_conf <- best_conf
+            # old_energy <- best_old_energy
+            # new_energy <- best_energy
+            # new_sm <- best_sm
+            # new_scm <- best_scm
+            # old_sm <- best_old_sm
+            # old_scm <- best_old_scm
+            # no_change <- 0
+            # cat("\nrestarting with previously best configuration\n")
+          # } else {
+            break 
+          # }
         }
+        if (verbose) {
+          cat("\n", no_change, "chain(s) with no improvement... stops at", schedule$stopping, "\n")
+        }
+      } else {
+        no_change <-  0
       }
       
-      # Best energy state
-      if (track) energies[k, ] <- new_energy
-      if (new_energy[1] < best_energy[1] / 1.0000001) {
-        best_k <- k
-        best_conf <- new_conf
-        best_energy <- new_energy
-        best_old_energy <- old_energy
-        old_conf <- old_conf
-        best_sm <- new_sm
-        best_old_sm <- old_sm
-        best_scm <- new_scm
-        best_old_scm <- old_scm
-      }
+      # Update control parameters
+      actual_temp <- actual_temp * schedule$temperature.decrease
+      x.max <- x_max0 - (i / schedule$chains) * (x_max0 - x.min) + cellsize[1]
+      y.max <- y_max0 - (i / schedule$chains) * (y_max0 - y.min) + cellsize[2]
       
-      # Freezing parameters
-      if (count == stopping[[1]]) {
-        if (new_energy[1] > best_energy[1] * 1.000001) {
-          old_conf <- old_conf
-          new_conf <- best_conf
-          old_energy <- best_old_energy
-          new_energy <- best_energy
-          count <- 0
-          new_sm <- best_sm
-          new_scm <- best_scm
-          old_sm <- best_old_sm
-          old_scm <- best_old_scm
-          cat("\n", "reached maximum count with suboptimal configuration\n")
-          cat("\n", "restarting with previously best configuration\n")
-          cat("\n", count, "iteration(s) with no improvement... stops at",
-              stopping[[1]], "\n")
-        } else {
-          break
-        }
-      }
-      if (progress) utils::setTxtProgressBar(pb, k)
-    }
-
+    } # End the annealing schedule
+    
     # Prepare output
     eval(.prepare_output())
   }
@@ -263,10 +255,9 @@ optimACDC <-
     }
     
     # strata.type
-    aa <- match(strata.type, c("area", "range"))
-    if (is.na(aa)) {
-      res <- paste("'strata.type = ", strata.type, "' is not supported",
-                   sep = "")
+    # aa <- match(strata.type, c("area", "range"))
+    if (!strata.type %in% c("area", "range")) {
+      res <- paste("'strata.type = ", strata.type, "' is not supported", sep = "")
       return (res)
     }
   }
@@ -323,8 +314,7 @@ optimACDC <-
   }
 # INTERNAL FUNCTION - COMPUTE THE NADIR VALUE ##################################
 .nadirACDC <-
-  function (n.pts, n.cov, n.candi, nadir, candi, covars, pcm, pop.prop, 
-            covars.type) {
+  function (n.pts, n.cov, n.candi, nadir, candi, covars, pcm, pop.prop, covars.type) {
     
     # Simulate the nadir point
     if (!is.null(nadir$sim) && !is.null(nadir$seeds)) { 
@@ -341,14 +331,14 @@ optimACDC <-
         pts <- sample(1:n.candi, n.pts)
         sm <- covars[pts, ]
         scm <- .corCORR(obj = sm, covars.type = covars.type)
-        nadirDIST[i] <- .objDIST(sm = sm, n.pts = n.pts, n.cov = n.cov, 
-                                 pop.prop = pop.prop, covars.type = covars.type)
+        nadirDIST[i] <- .objDIST(
+          sm = sm, n.pts = n.pts, n.cov = n.cov, pop.prop = pop.prop, covars.type = covars.type)
         nadirCORR[i] <- .objCORR(scm = scm, pcm = pcm)
       }
       
       # Prepare output
       res <- list(DIST = mean(nadirDIST), CORR = mean(nadirCORR))
-            
+      
     } else {
       
       # User-defined nadir values
@@ -369,12 +359,11 @@ optimACDC <-
 # Scaling is done using the upper-lower bound approach.
 # Aggregation is done using the weighted sum method.
 .objACDC <-
-  function (sm, n.cov, nadir, weights, n.pts, utopia, pcm, scm, covars.type,
-            pop.prop) {
+  function (sm, n.cov, nadir, weights, n.pts, utopia, pcm, scm, covars.type, pop.prop) {
     
     # DIST
-    obj_dist <- .objDIST(sm = sm, n.pts = n.pts, n.cov = n.cov, 
-                         pop.prop = pop.prop, covars.type = covars.type)
+    obj_dist <- .objDIST(
+      sm = sm, n.pts = n.pts, n.cov = n.cov, pop.prop = pop.prop, covars.type = covars.type)
     obj_dist <- (obj_dist - utopia$DIST) / (nadir$DIST - utopia$DIST)
     obj_dist <- obj_dist * weights$DIST
     
@@ -390,7 +379,7 @@ optimACDC <-
 # INTERNAL FUNCTION - PREPARE THE UTOPIA POINT #################################
 .utopiaACDC <-
   function (utopia) {
-
+    
     if (!is.null(unlist(utopia$user))) {
       list(CORR = utopia$user$CORR, DIST = utopia$user$DIST)
       
@@ -403,16 +392,16 @@ optimACDC <-
 #' @export
 objACDC <-
   function (points, candi,
-    # DIST and CORR
-    covars, strata.type = "area", use.coords = FALSE,
-    # MOOP
-    weights = list(CORR = 0.5, DIST = 0.5),
-    nadir = list(sim = NULL, seeds = NULL, user = NULL, abs = NULL),
-    utopia = list(user = NULL, abs = NULL)) {
+            # DIST and CORR
+            covars, strata.type = "area", use.coords = FALSE,
+            # MOOP
+            weights = list(CORR = 0.5, DIST = 0.5),
+            nadir = list(sim = NULL, seeds = NULL, user = NULL, abs = NULL),
+            utopia = list(user = NULL, abs = NULL)) {
     
     # Check arguments
-    check <- .optimACDCcheck(candi = candi, covars = covars, 
-                             use.coords = use.coords, strata.type = strata.type)
+    check <- .optimACDCcheck(
+      candi = candi, covars = covars, use.coords = use.coords, strata.type = strata.type)
     if (!is.null(check)) stop (check, call. = FALSE)
     
     # Prepare points and candi
@@ -424,17 +413,16 @@ objACDC <-
     # Compute base data
     pcm <- .corCORR(obj = covars, covars.type = covars.type)
     scm <- .corCORR(obj = sm, covars.type = covars.type)
-    pop_prop <- .strataACDC(n.pts = n_pts, strata.type = strata.type,
-                            covars = covars, covars.type = covars.type)
-    nadir <- .nadirACDC(n.pts = n_pts, n.cov = n_cov, n.candi = n_candi, 
-                        pcm = pcm, nadir = nadir, candi = candi, 
-                        covars = covars, pop.prop = pop_prop, 
-                        covars.type = covars.type)
+    pop_prop <- .strataACDC(
+      n.pts = n_pts, strata.type = strata.type, covars = covars, covars.type = covars.type)
+    nadir <- .nadirACDC(
+      n.pts = n_pts, n.cov = n_cov, n.candi = n_candi, pcm = pcm, nadir = nadir, candi = candi, 
+      covars = covars, pop.prop = pop_prop, covars.type = covars.type)
     utopia <- .utopiaACDC(utopia = utopia)
     
     # Compute the energy state
-    energy <- .objACDC(sm = sm, pop.prop = pop_prop, covars.type = covars.type, 
-                       weights = weights, pcm = pcm, scm = scm, n.pts = n_pts, 
-                       n.cov = n_cov, utopia = utopia, nadir = nadir)
+    energy <- .objACDC(
+      sm = sm, pop.prop = pop_prop, covars.type = covars.type, weights = weights, pcm = pcm, scm = scm, 
+      n.pts = n_pts, n.cov = n_cov, utopia = utopia, nadir = nadir)
     return (energy)
   }

@@ -1,16 +1,14 @@
 #' Auxiliary tools
 #' 
-#' Auxiliary tools used in the optimization of sample configurations using 
-#' spatial simulated annealing.
+#' Auxiliary tools used in the optimization of sample configurations using spatial simulated annealing.
 #' 
-#' @param OSC Optimized Sample Configuration.
+#' @param osc Object of class \code{OptimizedSampleConfiguration}.
 #' 
-#' @param at Point of the optimization at which the energy state should be
-#' returned. Available options: \code{"start"}, for the start, and \code{"end"},
-#' for the end of the optimization. Defaults to \code{at = "end"}.
+#' @param at Point of the optimization at which the energy state should be returned. Available options: 
+#' \code{"start"}, for the start, and \code{"end"}, for the end of the optimization. Defaults to 
+#' \code{at = "end"}.
 #' 
-#' @param n Number of instances that should be returned. Defaults to 
-#' \code{n = 1}.
+#' @param n Number of instances that should be returned. Defaults to \code{n = 1}.
 #' 
 #' @aliases SPSANNtools objSPSANN
 #' @author Alessandro Samuel-Rosa \email{alessandrosamuelrosa@@gmail.com}
@@ -18,81 +16,69 @@
 # FUNCTION - RETRIEVE THE ENERGY STATE #########################################
 #' @export
 #' @rdname SPSANNtools
-objSPSANN <- 
-  function (OSC, at = "end", n = 1) {
+objSPSANN <- function (osc, at = "end", n = 1) {
+  UseMethod( "objSPSANN" )
+}
+#' @export
+objSPSANN.OptimizedSampleConfiguration <- 
+  function (osc, at = "end", n = 1) {
     
     # Energy state at the start
-    if (at == "start") return (utils::head(attr(OSC, "energy.state"), n))
+    if (at == "start") res <- utils::head(osc$objective$energy, n)
     
     # Energy state at the end
-    if (at == "end") return(utils::tail(attr(OSC, "energy.state"), n))
+    if (at == "end") res <- utils::tail(osc$objective$energy, n)
+    
+    return(data.frame(res, row.names = ""))
+  }
+# INTERNAL FUNCTION - COMPUTE ACCEPTANCE PROBABILITY ###########################
+.acceptSPSANN <- 
+  function (old.energy, new.energy, actual.temp) {
+    accept <- min(1, exp((old.energy[[1]] - new.energy[[1]]) / actual.temp))
+    accept <- floor(stats::rbinom(n = 1, size = 1, prob = accept))
+    return (accept)
   }
 # INTERNAL FUNCTION - PLOTTING #################################################
 .spSANNplot <-
-  function (energy0, energies, k, acceptance, accept_probs, boundary, new_conf,
-            conf0, y_max0, y.max, x_max0, x.max, best.energy, best.k, MOOP, 
-            wp, greedy = FALSE) {
+  function (energy0, energies, k, 
+            # acceptance, accept_probs, 
+            boundary, new_conf, conf0, y_max0, y.max, x_max0, x.max, best.energy, best.k, MOOP, wp) {
     
     # graphics::par(mfrow = c(1, 2))
     
     # PLOT ENERGY STATES
     grDevices::dev.set(grDevices::dev.prev())
     graphics::par(mar = c(5, 4, 4, 4) + 0.1)
-    
-    # Multi-objective optimization problem
-    if (MOOP) {
-      n <- ncol(energy0)
-      l <- colnames(energy0)
-      a <- rbind(energy0, energies)
-      col <- c("red", rep("black", n - 1))
-      graphics::plot(1, type = 'n', xlim = c(0, k), 
-                     ylim = c(0, max(a)), #ylim = c(min(a), max(a)), 
-                     xlab = "iteration", ylab = "energy state")
-      graphics::legend("topright", legend = l, lwd = 1, lty = 1:n, col = col)
-      
-      for(i in 1:ncol(a)) {
-        # graphics::lines(a[, i] ~ c(0:k), type = "l", lty = i)
-        # col <- ifelse(i == 1, "red", "black")
-        graphics::lines(a[, i] ~ c(1:k), type = "l", lty = i, col = col[i])
-      }
-      graphics::lines(x = c(-k, 0), y = rep(energy0[1], 2), col = "red")
-      graphics::lines(x = rep(best.k, 2), y = c(-5, best.energy[1]), 
-                      col = "green")
-      
-      # Single-objective optimization problem
-    } else {
-      a <- c(energy0, energies[1:k])
-      graphics::plot(a ~ c(0:k), type = "l", xlab = "iteration", 
-                     ylab = "energy state")
-      graphics::lines(x = c(-k, 0), y = rep(energy0, 2), col = "red")
-      graphics::lines(x = rep(best.k, 2), y = c(-5, best.energy), col = "green") 
+
+    n <- ncol(energy0)
+    l <- colnames(energy0)
+    a <- rbind(energy0, energies)
+    # col <- c("red", rep("black", n - 1))
+    col <- c("red", grDevices::gray(seq(0, 0.5, length.out = n - 1)))
+    graphics::plot(
+      1, type = 'n', xlim = c(0, k), # ylim = c(0, max(a)), 
+      ylim = c(min(a), max(a)), xlab = "jitter", ylab = "energy state")
+    graphics::legend("topright", legend = l, lwd = 1, lty = 1:n, col = col)
+    for(i in 1:ncol(a)) {
+      graphics::lines(a[, i] ~ c(1:k), type = "l", lty = i, col = col[i])
     }
-    
-    # plot acceptance probability
-    if (greedy == FALSE) {
-      a <- c(acceptance[[1]], accept_probs[1:k])
-      graphics::par(new = TRUE)
-      graphics::plot(a ~ c(0:k), type = "l", axes = FALSE, bty = "n", xlab = "",
-                     ylab = "", col = "blue", ylim = c(0, acceptance[[1]]))
-      graphics::axis(side = 4, at = pretty(range(a)))
-      graphics::mtext("acceptance probability", side = 4, line = 3) 
-    }
+    graphics::lines(x = c(-k, 0), y = rep(energy0[1], 2), col = "red")
+    graphics::lines(x = rep(best.k, 2), y = c(-500, best.energy[1]), col = "blue")
     
     # PLOT SAMPLE CONFIGURATION
     grDevices::dev.set(grDevices::dev.next())
-    
     bb <- sp::bbox(boundary)
-    if (class(boundary) == "SpatialPoints") {
-      sp::plot(boundary, pch = 20, cex = 0.1)
+    if (methods::is(boundary, "SpatialPoints")) {
+      sp::plot(x = boundary, pch = 20, cex = 0.1)
+      # plot(x = boundary, pch = 20, cex = 0.1)
+      # plot(boundary@coords, pch = 20, cex = 0.1)
     } else {
-      sp::plot(boundary)
+      sp::plot(x = boundary)
     }
-    graphics::points(conf0[, 1], conf0[, 2], pch = 1, cex = 0.5, 
-                     col = "lightgray")
+    graphics::points(conf0[, 1], conf0[, 2], pch = 1, cex = 0.5, col = "lightgray")
     graphics::points(new_conf[, 1], new_conf[, 2], pch = 20, cex = 0.5)
     if (!missing(wp)) {
-      graphics::points(new_conf[wp, 1], new_conf[wp, 2], pch = 20, cex = 1, 
-                       col = "red")
+      graphics::points(new_conf[wp, 1], new_conf[wp, 2], pch = 20, cex = 1, col = "red")
     }
     
     # plot maximum shift in the x and y coordinates
@@ -119,8 +105,7 @@ objSPSANN <-
     
     x <- bb[1, 1] - 0.02 * x_max0
     y <- bb[2, 1] + (bb[2, 2] - bb[2, 1]) / 2
-    graphics::text(y = y, x = x, srt = 90, 
-                   labels = "maximum shift in the Y axis")
+    graphics::text(y = y, x = x, srt = 90, labels = "maximum shift in the Y axis")
   }
 # THE ORIGINAL spSANN FUNCTION #################################################
 # .energyState <- 
