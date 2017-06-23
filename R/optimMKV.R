@@ -3,7 +3,7 @@
 #' Optimize a sample configuration for spatial interpolation with a known linear model. A criterion is defined 
 #' so that the sample configuration minimizes the mean or maximum kriging variance (\bold{MKV}).
 #'
-#' @inheritParams spJitter
+# @inheritParams spJitter
 #' @template spSANN_doc
 #' @template spJitter_doc
 #' 
@@ -97,7 +97,7 @@ optimMKV <-
     
     # Prepare prediction grid (covars) and starting sample matrix (sm)
     covars <- .covarsMKV(eqn = eqn, candi = candi, covars = covars)
-    sm <- .smMKV(n_pts = n_pts, eqn = eqn, pts = points, covars = covars)
+    sm <- .smMKV(n_pts = n_pts + n_fixed_pts, eqn = eqn, pts = points, covars = covars)
     
     # Initial energy state
     energy0 <- data.frame(

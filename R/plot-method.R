@@ -43,15 +43,22 @@ plot.OptimizedSampleConfiguration <-
     
     # Plot the energy states
     if (all(which == 1:2)) {
-      k <- x$spsann$chains[2:3]
-      k <- as.numeric(k[1] * k[2] * nrow(x$points))
+      # k <- x$spsann$chains[2:3]
+      # k <- as.numeric(k[1] * k[2] * nrow(x$points))
       a <- x$objective$energy
+      # if (nrow(a) < k) {
+        k <- nrow(a) - 1
+      # }
       
       l <- colnames(a)
       n <- ncol(a)
       # col <- c("red", rep("black", n - 1))
       col <- c("red", grDevices::gray(seq(0, 0.5, length.out = n - 1)))
-      if (n > 2) { ylim <- range(sapply(a, max)) } else { ylim <- range(a) }
+      if (n > 2) {
+        ylim <- range(sapply(a, max))
+      } else {
+        ylim <- range(a)
+      }
       # ylim <- range(sapply(a, max))
       graphics::plot(
         1, type = 'n', xlim = c(0, k), # ylim = c(0, max(sapply(a, max)) * 1.1), 
@@ -66,15 +73,22 @@ plot.OptimizedSampleConfiguration <-
     if (which == 1:2 || which == 2) {
       if (!missing(boundary)) {
         bb <- sp::bbox(boundary)
-        if (methods::is(boundary, "SpatialPoints")) {
-          sp::plot(x = boundary, pch = 20, cex = 0.1)
+        if (all(x$points$free == 1)) {
+          xlab <- ""
         } else {
-          sp::plot(x = boundary)
+          xlab <- paste(intToUtf8(9679), " = free; ", intToUtf8(10005), " = fixed")
         }
-        graphics::points(x$points[, "x"], x$points[, "y"], pch = 20, cex = 0.5)
-
+        if (methods::is(boundary, "SpatialPoints")) {
+          sp::plot(x = boundary, pch = 20, cex = 0.1, xlab = xlab)
+        } else {
+          sp::plot(x = boundary, xlab = xlab)
+        }
+        graphics::points(
+          x$points[, "x"], x$points[, "y"], pch = ifelse(x$points[, "free"] == 1, 20, 4), cex = 0.75)
       } else {
-        graphics::plot(x$points[, c("x", "y")], pch = 20, cex = 0.5, asp = 1)
+        graphics::plot(
+          x$points[, c("x", "y")], pch = ifelse(x$points[, "free"] == 1, 20, 4), cex = 0.75, asp = 1,
+          xlab = c("x = fixed, o = free"))
       }
     }
   }

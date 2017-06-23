@@ -3,7 +3,7 @@
 #' Optimize a sample configuration for spatial trend identification and estimation. A criterion is defined 
 #' so that the sample reproduces the marginal distribution of the covariates (\bold{DIST}).
 #'
-#' @inheritParams spJitter
+# @inheritParams spJitter
 #' @template spSANN_doc
 #' @template ACDC_doc
 #' @template spJitter_doc
@@ -107,12 +107,17 @@ optimDIST <-
     eval(.prepare_acdc_covars())
     
     # Base data and initial energy state (energy)
-    pop_prop <- .strataACDC(n.pts = n_pts, strata.type = strata.type,
-                            covars.type = covars.type, covars = covars)
+    # Use 'n_pts + n_fixed_pts' to account for existing fixed points.
+    # pop_prop <- .strataACDC(n.pts = n_pts, strata.type = strata.type,
+    #                         covars.type = covars.type, covars = covars)
+    # energy0 <- data.frame(
+    #   obj = .objDIST(sm = sm, pop.prop = pop_prop, n.pts = n_pts,
+    #                  n.cov = n_cov, covars.type = covars.type))
+    pop_prop <- .strataACDC(
+      n.pts = n_pts + n_fixed_pts, strata.type = strata.type, covars.type = covars.type, covars = covars)
     energy0 <- data.frame(
-      obj = .objDIST(sm = sm, pop.prop = pop_prop, n.pts = n_pts,
-                     n.cov = n_cov, covars.type = covars.type))
-    
+      obj = .objDIST(
+        sm = sm, pop.prop = pop_prop, n.pts = n_pts + n_fixed_pts, n.cov = n_cov, covars.type = covars.type))
     
     # Other settings for the simulated annealing algorithm
     old_sm <- sm
@@ -139,11 +144,15 @@ optimDIST <-
           eval(.plot_and_jitter())
           
           # Update sample and correlation matrices, and energy state
+          # Use 'n_pts + n_fixed_pts' to account for existing fixed points.
           new_sm[wp, ] <- covars[new_conf[wp, 1], ]
+          # new_energy <- data.frame(
+            # obj = .objDIST(sm = new_sm, pop.prop = pop_prop, n.pts = n_pts, 
+                           # n.cov = n_cov, covars.type = covars.type))
           new_energy <- data.frame(
-            obj = .objDIST(sm = new_sm, pop.prop = pop_prop, n.pts = n_pts, 
-                           n.cov = n_cov, covars.type = covars.type))
-            
+            obj = .objDIST(
+              sm = new_sm, pop.prop = pop_prop, n.pts = n_pts + n_fixed_pts, n.cov = n_cov, 
+              covars.type = covars.type))
           
           # Evaluate the new system configuration
           accept <- .acceptSPSANN(old_energy[[1]], new_energy[[1]], actual_temp)
@@ -264,8 +273,8 @@ objDIST <-
     covars, strata.type = "area", use.coords = FALSE) {
     
     # Check other arguments
-    check <- .optimACDCcheck(candi = candi, covars = covars, 
-                             use.coords = use.coords, strata.type = strata.type)
+    check <- .optimACDCcheck(
+      candi = candi, covars = covars, use.coords = use.coords, strata.type = strata.type)
     if (!is.null(check)) stop (check, call. = FALSE)
     
     # Prepare points and candi
@@ -275,9 +284,9 @@ objDIST <-
     eval(.prepare_acdc_covars())
     
     # Calculate the energy state
-    pop_prop <- .strataACDC(n.pts = n_pts, strata.type = strata.type,
-                            covars = covars, covars.type = covars.type)
-    energy <- .objDIST(sm = sm, pop.prop = pop_prop, n.pts = n_pts, 
-                       n.cov = n_cov, covars.type = covars.type)
+    pop_prop <- .strataACDC(
+      n.pts = n_pts, strata.type = strata.type, covars = covars, covars.type = covars.type)
+    energy <- .objDIST(sm = sm, pop.prop = pop_prop, n.pts = n_pts, n.cov = n_cov, covars.type = covars.type)
+
     return (energy)
   }

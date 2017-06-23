@@ -6,7 +6,7 @@
 #' numeric covariates, and the class proportions of the factor covariates (\bold{CLHS}). The utility function 
 #' is obtained aggregating three objective functions: \bold{O1}, \bold{O2}, and \bold{O3}.
 #'
-#' @inheritParams spJitter
+# @inheritParams spJitter
 #' @template spSANN_doc
 #' @inheritParams optimACDC
 #' @template spJitter_doc
@@ -18,7 +18,7 @@
 #' estimated with \code{\link[stats]{quantile}} using a continuous function (\code{type = 7}), that is, a 
 #' function that interpolates between existing covariate values to estimate the sample quantiles. This is 
 #' the procedure implemented in the method of Minasny and McBratney (2006), which creates breakpoints that do 
-#' not occur in the population of existing covariate values. Depending on the level of discretisation of the 
+#' not occur in the population of existing covariate values. Depending on the level of discretization of the 
 #' covariate values, that is, how many significant digits they have, this can create repeated breakpoints, 
 #' resulting in empty marginal sampling strata. The number of empty marginal sampling strata will ultimately
 #' depend on the frequency distribution of the covariate and on the number of sampling points. The effect of
@@ -132,7 +132,7 @@ optimCLHS <-
     
     # Compute initial energy state
     energy0 <- .objCLHS(
-      sm = sm, breaks = breaks, id_num = id_num, pcm = pcm, id_fac = id_fac, n_pts = n_pts, 
+      sm = sm, breaks = breaks, id_num = id_num, pcm = pcm, id_fac = id_fac, n_pts = n_pts + n_fixed_pts, 
       pop_prop = pop_prop, weights = weights, covars_type = covars_type)
     
     # Other settings for the simulated annealing algorithm
@@ -161,10 +161,9 @@ optimCLHS <-
           
           # Update sample matrix and compute the new energy state
           new_sm[wp, ] <- covars[new_conf[wp, 1], ]
-          new_energy <-
-            .objCLHS(sm = new_sm, breaks = breaks, id_num = id_num, pcm = pcm,
-                     id_fac = id_fac, n_pts = n_pts, pop_prop = pop_prop,
-                     weights = weights, covars_type = covars_type)
+          new_energy <- .objCLHS(
+            sm = new_sm, breaks = breaks, id_num = id_num, pcm = pcm, id_fac = id_fac, 
+            n_pts = n_pts + n_fixed_pts, pop_prop = pop_prop, weights = weights, covars_type = covars_type)
           
           # Evaluate the new system configuration
           accept <- .acceptSPSANN(old_energy[[1]], new_energy[[1]], actual_temp)

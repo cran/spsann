@@ -2,8 +2,8 @@
 % Please edit documentation in R/spsann.R
 \docType{package}
 \name{spsann-package}
-\alias{spsann}
 \alias{spsann-package}
+\alias{spsann}
 \title{The spsann Package}
 \description{
 Optimization of sample configurations using spatial simulated annealing
@@ -117,7 +117,7 @@ Major conceptual contributions were made by Gerard Heuvelink \email{gerard.heuve
 \email{dick.brus@wur.nl}, Murray Lark \email{mlark@bgs.ac.uk}, and Edzer Pebesma 
 \email{edzer.pebesma@uni-muenster.de}.
 }
+
 \author{
 Author and Maintainer: Alessandro Samuel-Rosa \email{alessandrosamuelrosa@gmail.com}.
 }
-
