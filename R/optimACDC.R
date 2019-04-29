@@ -1,9 +1,9 @@
 #' Optimization of sample configurations for spatial trend identification and estimation (III)
 #'
-#' Optimize a sample configuration for spatial trend identification and estimation. An utility function 
-#' \emph{U} is defined so that the sample reproduces the bivariate association/correlation between the 
-#' covariates, as well as their marginal distribution (\bold{ACDC}). The utility function is obtained 
-#' aggregating two objective functions: \bold{CORR} and \bold{DIST}.
+#' Optimize a sample configuration for spatial trend identification and estimation. An utility function _U_ is
+#' defined so that the sample reproduces the bivariate association/correlation between the covariates, as well
+#' as their marginal distribution (__ACDC__). The utility function is obtained aggregating two objective
+#' functions: __CORR__ and __DIST__.
 #'
 # @inheritParams spJitter
 #' @template spSANN_doc
@@ -13,7 +13,7 @@
 #' 
 #' @details 
 #' Visit the help pages of \code{\link[spsann]{optimCORR}} and \code{\link[spsann]{optimDIST}} to see the 
-#' details of the objective functions that compose \bold{ACDC}.
+#' details of the objective functions that compose __ACDC__.
 #' 
 #' @return
 #' \code{optimACDC} returns an object of class \code{OptimizedSampleConfiguration}: the optimized sample
@@ -23,23 +23,23 @@
 #' function value.
 #' 
 #' @note
-#' This function was derived with modifications from the method known as the \emph{conditioned Latin Hypercube 
-#' sampling} originally proposed by Minasny and McBratney (2006), and implemented in the R-package 
-#' \pkg{\link[clhs]{clhs}} by Pierre Roudier.
+#' This function was derived with modifications from the method known as the _conditioned Latin Hypercube 
+#' sampling_ originally proposed by Minasny and McBratney (2006), and implemented in the R-package 
+#' __[clhs](https://CRAN.R-project.org/package=clhs)__ by Pierre Roudier.
 #' 
 #' @references
 #' Minasny, B.; McBratney, A. B. A conditioned Latin hypercube method for sampling in the presence of 
-#' ancillary information. \emph{Computers & Geosciences}, v. 32, p. 1378-1388, 2006.
+#' ancillary information. _Computers & Geosciences_, v. 32, p. 1378-1388, 2006.
 #'
 #' Minasny, B.; McBratney, A. B. Conditioned Latin Hypercube Sampling for calibrating soil sensor data to soil
-#' properties. Chapter 9. Viscarra Rossel, R. A.; McBratney, A. B.; Minasny, B. (Eds.) \emph{Proximal Soil
-#' Sensing}. Amsterdam: Springer, p. 111-119, 2010.
+#' properties. Chapter 9. Viscarra Rossel, R. A.; McBratney, A. B.; Minasny, B. (Eds.) _Proximal Soil Sensing_.
+#' Amsterdam: Springer, p. 111-119, 2010.
 #'
 #' Roudier, P.; Beaudette, D.; Hewitt, A. A conditioned Latin hypercube sampling algorithm incorporating
-#' operational constraints. \emph{5th Global Workshop on Digital Soil Mapping}. Sydney, p. 227-231, 2012.
+#' operational constraints. _5th Global Workshop on Digital Soil Mapping_. Sydney, p. 227-231, 2012.
 #' 
 #' @author Alessandro Samuel-Rosa \email{alessandrosamuelrosa@@gmail.com}
-#' @seealso \code{\link[clhs]{clhs}}, \code{\link[pedometrics]{cramer}}
+#' @seealso \code{\link[pedometrics]{cramer}}
 #' @aliases optimACDC objACDC ACDC
 #' @export
 #' @examples
@@ -53,12 +53,12 @@
 #'   x.min = 0, y.min = 0, cellsize = 40)
 #' set.seed(2001)
 #' res <- optimACDC(
-#'   points = 10, candi = candi, covars = covars, nadir = nadir,
-#'   use.coords = TRUE, utopia = utopia, schedule = schedule)
+#'   points = 10, candi = candi, covars = covars, nadir = nadir, use.coords = TRUE, 
+#'   utopia = utopia, schedule = schedule, weights = list(DIST = 1/2, CORR = 1/2))
 #' objSPSANN(res) - objACDC(
-#'   points = res, candi = candi, covars = covars, 
-#'   use.coords = TRUE, nadir = nadir, utopia = utopia)
-# MAIN FUNCTION ################################################################
+#'   points = res, candi = candi, covars = covars, use.coords = TRUE, nadir = nadir, 
+#'   utopia = utopia, weights = list(DIST = 1/2, CORR = 1/2))
+# MAIN FUNCTION ###############################################################################################
 optimACDC <-
   function (points, candi, 
             # DIST and CORR
@@ -67,7 +67,8 @@ optimACDC <-
             schedule = scheduleSPSANN(), plotit = FALSE, track = FALSE,
             boundary, progress = "txt", verbose = FALSE,
             # MOOP
-            weights = list(CORR = 0.5, DIST = 0.5),
+            weights,
+            # weights = list(CORR = 0.5, DIST = 0.5),
             nadir = list(sim = NULL, seeds = NULL, user = NULL, abs = NULL),
             utopia = list(user = NULL, abs = NULL)) {
     
@@ -373,8 +374,12 @@ optimACDC <-
     obj_cor <- (obj_cor - utopia$CORR) / (nadir$CORR - utopia$CORR)
     obj_cor <- obj_cor * weights$CORR
     
-    # Prepare output
-    res <- data.frame(obj = obj_dist + obj_cor, CORR = obj_cor, DIST = obj_dist)
+    # Prepare output, a data.frame with the weighted sum in the first column followed by the values of the
+    # constituent objective functions (IN ALPHABETICAL ORDER).
+    res <- data.frame(
+      obj = obj_dist + obj_cor, 
+      CORR = obj_cor, 
+      DIST = obj_dist)
     return (res)
   }
 # INTERNAL FUNCTION - PREPARE THE UTOPIA POINT #################################
@@ -396,7 +401,8 @@ objACDC <-
             # DIST and CORR
             covars, strata.type = "area", use.coords = FALSE,
             # MOOP
-            weights = list(CORR = 0.5, DIST = 0.5),
+            weights,
+            # weights = list(CORR = 0.5, DIST = 0.5),
             nadir = list(sim = NULL, seeds = NULL, user = NULL, abs = NULL),
             utopia = list(user = NULL, abs = NULL)) {
     

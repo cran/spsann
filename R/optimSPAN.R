@@ -47,14 +47,16 @@
 #' schedule <- scheduleSPSANN(chains = 1, initial.temperature = 1,
 #'                            x.max = 1540, y.max = 2060, x.min = 0, 
 #'                            y.min = 0, cellsize = 40)
+#' weights <- list(CORR = 1/6, DIST = 1/6, PPL = 1/3, MSSD = 1/3)
 #' set.seed(2001)
-#' res <- optimSPAN(points = 10, candi = candi, covars = covars, nadir = nadir,
-#'                  use.coords = TRUE, utopia = utopia, schedule = schedule)
+#' res <- optimSPAN(
+#'   points = 10, candi = candi, covars = covars, nadir = nadir, weights = weights,
+#'     use.coords = TRUE, utopia = utopia, schedule = schedule)
 #' objSPSANN(res) -
 #'   objSPAN(points = res, candi = candi, covars = covars, nadir = nadir,
-#'           use.coords = TRUE, utopia = utopia)
+#'             use.coords = TRUE, utopia = utopia, weights = weights)
 #' }
-# MAIN FUNCTION ################################################################
+# MAIN FUNCTION ###############################################################################################
 optimSPAN <-
   function(points, candi,
            # DIST and CORR
@@ -66,7 +68,8 @@ optimSPAN <-
            schedule = scheduleSPSANN(), plotit = FALSE, track = FALSE,
            boundary, progress = "txt", verbose = FALSE,
            # MOOP
-           weights = list(CORR = 1/6, DIST = 1/6, PPL = 1/3, MSSD = 1/3),
+           weights,
+           # weights = list(CORR = 1/6, DIST = 1/6, PPL = 1/3, MSSD = 1/3),
            nadir = list(sim = NULL, seeds = NULL, user = NULL, abs = NULL),
            utopia = list(user = NULL, abs = NULL)) {
     
@@ -314,7 +317,8 @@ objSPAN <-
            # SPSANN
            x.max, x.min, y.max, y.min,
            # MOOP
-           weights = list(CORR = 1/6, DIST = 1/6, PPL = 1/3, MSSD = 1/3),
+           weights,
+           # weights = list(CORR = 1/6, DIST = 1/6, PPL = 1/3, MSSD = 1/3),
            nadir = list(sim = NULL, seeds = NULL, user = NULL, abs = NULL),
            utopia = list(user = NULL, abs = NULL)) {
     
@@ -404,10 +408,14 @@ objSPAN <-
     obj_mssd <- (obj_mssd - utopia$MSSD) / (nadir$MSSD - utopia$MSSD)
     obj_mssd <- obj_mssd * weights$MSSD
     
-    # Prepare output
-    res <- data.frame(obj = obj_dist + obj_cor + obj_ppl + obj_mssd, 
-                      CORR = obj_cor, DIST = obj_dist, PPL = obj_ppl,
-                      MSSD = obj_mssd)
+    # Prepare output, a data.frame with the weighted sum in the first column followed by the values of the
+    # constituent objective functions (IN ALPHABETICAL ORDER).
+    res <- data.frame(
+      obj = obj_dist + obj_cor + obj_mssd + obj_ppl, 
+      CORR = obj_cor,
+      DIST = obj_dist,
+      MSSD = obj_mssd,
+      PPL = obj_ppl)
     return(res)
   }
 # INTERNAL FUNCTION - COMPUTE THE NADIR VALUE #################################################################
